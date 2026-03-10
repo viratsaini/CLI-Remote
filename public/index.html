@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Copilot CLI Remote</title>
+  <title>CLI Remote</title>
   <link rel="stylesheet" href="/vendor/xterm.css" />
   <link rel="stylesheet" href="/css/main.css" />
   <link rel="stylesheet" href="/css/terminal.css" />
@@ -21,12 +21,11 @@
     </button>
     <div class="nav-title">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right:8px;flex-shrink:0">
-        <circle cx="12" cy="12" r="11" stroke="#58a6ff" stroke-width="1.5"/>
-        <circle cx="9" cy="10" r="2" fill="#58a6ff"/>
-        <circle cx="15" cy="10" r="2" fill="#58a6ff"/>
-        <path d="M8 15.5c1-1.5 7-1.5 8 0" stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round"/>
+        <rect x="2" y="3" width="20" height="18" rx="2" stroke="#58a6ff" stroke-width="1.5"/>
+        <polyline points="7 10 10 13 7 16" stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="13" y1="16" x2="17" y2="16" stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
-      Copilot CLI Remote
+      CLI Remote
     </div>
     <div class="nav-right">
       <div class="status-indicator" id="status-indicator" title="Disconnected">
@@ -98,8 +97,8 @@
               <polyline points="4 17 10 11 4 5"/>
               <line x1="12" y1="19" x2="20" y2="19"/>
             </svg>
-            <h2>Welcome to Copilot CLI Remote</h2>
-            <p>Create a new terminal session to get started</p>
+            <h2>Welcome to CLI Remote</h2>
+            <p>Full access to your computer's terminal — from anywhere</p>
             <button class="btn btn-primary" onclick="document.getElementById('new-session-btn').click()">
               + New Session
             </button>

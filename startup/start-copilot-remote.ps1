@@ -1,6 +1,7 @@
-# Copilot CLI Remote — Startup Script
-# This script starts the Node.js server and Cloudflare tunnel together.
-# It is designed to run at Windows startup via Task Scheduler.
+# CLI Remote — Startup Script
+# Starts the Node.js server and Cloudflare tunnel together.
+# Gives you full terminal access to this computer from anywhere in the world.
+# Runs at Windows startup via the Startup folder shortcut.
 
 $ErrorActionPreference = "Continue"
 
@@ -37,7 +38,7 @@ Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue |
     ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
 
 # ---- Start the Node.js server ----
-Write-Host "[startup] Starting Copilot CLI Remote server..."
+Write-Host "[startup] Starting CLI Remote server..."
 $serverProcess = Start-Process -FilePath "node" `
     -ArgumentList "server.js" `
     -WorkingDirectory $AppDir `

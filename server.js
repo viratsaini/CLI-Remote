@@ -93,7 +93,7 @@ wss.on('connection', (ws, req) => wsHandler.handleConnection(ws, req));
 
 // Startup
 server.listen(config.port, config.host, () => {
-  console.log(`\n🚀 Copilot CLI Remote started`);
+  console.log(`\n🚀 CLI Remote started`);
   console.log(`   Local: http://localhost:${config.port}`);
 
   // Print all local IPs for mobile access

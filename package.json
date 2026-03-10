@@ -1,7 +1,7 @@
 {
-  "name": "copilot-cli-remote",
+  "name": "cli-remote",
   "version": "1.0.0",
-  "description": "Remote web interface for GitHub Copilot CLI - control from any mobile device",
+  "description": "Access your computer's command line from anywhere in the world — full terminal control from any device",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
