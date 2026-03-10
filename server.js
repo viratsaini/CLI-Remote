@@ -1,5 +1,8 @@
 'use strict';
 
+// Load .env before anything else
+require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -71,6 +74,13 @@ app.get('*', (req, res) => {
     return res.status(404).json({ error: 'API endpoint not found' });
   }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Global JSON error handler (prevents Express from returning HTML error pages)
+app.use((err, req, res, _next) => {
+  console.error('[error]', err.message);
+  const status = err.status || 500;
+  res.status(status).json({ error: err.message || 'Internal server error' });
 });
 
 // HTTP server
