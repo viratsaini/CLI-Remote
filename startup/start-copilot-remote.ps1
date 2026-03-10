@@ -6,7 +6,7 @@
 $ErrorActionPreference = "Continue"
 
 # ---- Configuration ----
-$AppDir      = Split-Path -Parent $PSScriptRoot   # game- root
+$AppDir      = Split-Path -Parent $PSScriptRoot   # Remote-CLI root
 $LogDir      = Join-Path $AppDir "startup\logs"
 $ServerLog   = Join-Path $LogDir "server.log"
 $TunnelLog   = Join-Path $LogDir "tunnel.log"
@@ -61,11 +61,31 @@ $tunnelProcess = Start-Process -FilePath $CloudflaredExe `
 
 Write-Host "[startup] Cloudflare Tunnel started (PID: $($tunnelProcess.Id))"
 
-# ---- Start URL Monitor (detects URL change → saves to file + WhatsApp) ----
+# Wait for tunnel to establish and get a URL before starting monitor
+Write-Host "[startup] Waiting for tunnel URL..."
+$tunnelReady = $false
+for ($i = 0; $i -lt 30; $i++) {
+    Start-Sleep -Seconds 2
+    $tunnelErrLog = Join-Path $LogDir "tunnel-error.log"
+    if (Test-Path $tunnelErrLog) {
+        $urlMatch = Get-Content $tunnelErrLog -ErrorAction SilentlyContinue | Select-String "trycloudflare\.com" | Select-Object -Last 1
+        if ($urlMatch) {
+            Write-Host "[startup] Tunnel URL found!"
+            $tunnelReady = $true
+            break
+        }
+    }
+}
+if (-not $tunnelReady) {
+    Write-Host "[startup] WARNING: Tunnel URL not detected after 60s. Monitor will keep polling."
+}
+
+# ---- Start URL Monitor (detects URL change -> saves to file + ntfy push) ----
 $monitorScript = Join-Path $PSScriptRoot "url-monitor.ps1"
 if (Test-Path $monitorScript) {
     $monitorProcess = Start-Process -FilePath "powershell.exe" `
         -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$monitorScript`"" `
+        -WorkingDirectory $PSScriptRoot `
         -PassThru -WindowStyle Hidden
     Write-Host "[startup] URL Monitor started (PID: $($monitorProcess.Id))"
 }

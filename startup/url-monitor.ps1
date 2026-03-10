@@ -1,4 +1,6 @@
 # CLI Remote — Tunnel URL Monitor & Phone Notifier
+# Compatible with Windows PowerShell 5.1+
+#
 # Watches for tunnel URL changes and sends the new URL to your phone.
 #
 # This script does three things:
@@ -6,28 +8,10 @@
 #   2. Saves the current URL to startup/logs/current-url.txt
 #   3. Sends a push notification to your phone via ntfy.sh (FREE, no signup!)
 #
-# ── SETUP (one-time, 1 minute) ──────────────────────────────────────────────
-#
-# 1. Install the "ntfy" app on your phone:
-#      Android: https://play.google.com/store/apps/details?id=io.heckel.ntfy
-#      iPhone:  https://apps.apple.com/app/ntfy/id1625396347
-#
-# 2. Open the app → tap "+" → Subscribe to topic: cli-remote-virat
-#    (this is your private channel name — change it if you want)
-#
-# 3. That's it! You'll get push notifications with your URL automatically.
-#
-# Optional: WhatsApp via CallMeBot (if you get an API key later)
-#   Set APIKEY in startup/.notifier-config
-#
-# Config file: startup/.notifier-config
-# ┌─────────────────────────────────────────────┐
-# │ PHONE=918273436552                          │
-# │ APIKEY=your-callmebot-key (optional)        │
-# │ NTFY_TOPIC=cli-remote-virat                 │
-# └─────────────────────────────────────────────┘
-#
-# ─────────────────────────────────────────────────────────────────────────────
+# SETUP (one-time, 1 minute):
+#   1. Install "ntfy" app on your phone (Android or iPhone)
+#   2. Open the app, tap "+", subscribe to topic: cli-remote-virat
+#   3. Done! You will get push notifications with your URL automatically.
 
 param(
     [int]$PollIntervalSeconds = 10
@@ -35,34 +19,31 @@ param(
 
 $ErrorActionPreference = "Continue"
 
-$AppDir   = Split-Path -Parent $PSScriptRoot
-$LogDir   = Join-Path $AppDir "startup\logs"
-$UrlFile  = Join-Path $LogDir "current-url.txt"
-$TunnelLog = Join-Path $LogDir "tunnel-error.log"
+$AppDir     = Split-Path -Parent $PSScriptRoot
+$LogDir     = Join-Path $AppDir "startup\logs"
+$UrlFile    = Join-Path $LogDir "current-url.txt"
+$TunnelLog  = Join-Path $LogDir "tunnel-error.log"
 $ConfigFile = Join-Path $PSScriptRoot ".notifier-config"
 
+# Ensure log directory exists
+if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
+
 # ---- Load config ----
-$Phone     = $env:CALLMEBOT_PHONE
-$ApiKey    = $env:CALLMEBOT_APIKEY
-$NtfyTopic = $env:NTFY_TOPIC ?? "cli-remote-virat"
+$NtfyTopic = "cli-remote-virat"
+$Phone     = ""
+$ApiKey    = ""
 
 if (Test-Path $ConfigFile) {
-    Get-Content $ConfigFile | ForEach-Object {
-        if ($_ -match '^\s*PHONE\s*=\s*(.+)$')      { $Phone     = $matches[1].Trim() }
-        if ($_ -match '^\s*APIKEY\s*=\s*(.+)$')     { $ApiKey    = $matches[1].Trim() }
-        if ($_ -match '^\s*NTFY_TOPIC\s*=\s*(.+)$') { $NtfyTopic = $matches[1].Trim() }
+    foreach ($line in (Get-Content $ConfigFile)) {
+        if ($line -match '^\s*PHONE\s*=\s*(.+)$')      { $Phone     = $matches[1].Trim() }
+        if ($line -match '^\s*APIKEY\s*=\s*(.+)$')     { $ApiKey    = $matches[1].Trim() }
+        if ($line -match '^\s*NTFY_TOPIC\s*=\s*(.+)$') { $NtfyTopic = $matches[1].Trim() }
     }
 }
 
-$canWhatsApp = $Phone -and $ApiKey -and ($ApiKey -ne "YOUR_API_KEY_HERE")
+$canWhatsApp = ($Phone -ne "") -and ($ApiKey -ne "") -and ($ApiKey -ne "YOUR_API_KEY_HERE")
 
-Write-Host "[monitor] ntfy.sh push notifications enabled (topic: $NtfyTopic)"
-if ($canWhatsApp) {
-    Write-Host "[monitor] WhatsApp notifications also enabled for +$Phone"
-} else {
-    Write-Host "[monitor] WhatsApp notifications disabled (no CallMeBot API key)"
-    Write-Host "[monitor] Using ntfy.sh only — install the ntfy app and subscribe to: $NtfyTopic"
-}
+Write-Host ("[monitor] ntfy.sh push notifications enabled (topic: " + $NtfyTopic + ")")
 
 # ---- Helper: extract URL from tunnel log ----
 function Get-TunnelUrl {
@@ -74,28 +55,28 @@ function Get-TunnelUrl {
     return $null
 }
 
-# ---- Helper: send push notification via ntfy.sh (FREE, no signup) ----
+# ---- Helper: send push notification via ntfy.sh ----
 function Send-Ntfy {
-    param([string]$Title, [string]$Message, [string]$Url)
+    param([string]$Title, [string]$Message, [string]$ClickUrl)
     try {
-        $body = @{
+        $bodyObj = @{
             topic    = $NtfyTopic
             title    = $Title
             message  = $Message
             priority = 4
             tags     = @("computer", "link")
-            click    = $Url
+            click    = $ClickUrl
             actions  = @(@{
                 action = "view"
                 label  = "Open CLI Remote"
-                url    = $Url
+                url    = $ClickUrl
             })
-        } | ConvertTo-Json -Depth 3
-
-        Invoke-RestMethod -Uri "https://ntfy.sh" -Method POST -Body $body -ContentType "application/json" -TimeoutSec 15 | Out-Null
+        }
+        $bodyJson = $bodyObj | ConvertTo-Json -Depth 3
+        Invoke-RestMethod -Uri "https://ntfy.sh" -Method POST -Body $bodyJson -ContentType "application/json" -TimeoutSec 15 | Out-Null
         Write-Host "[monitor] ntfy.sh push notification sent!"
     } catch {
-        Write-Host "[monitor] ntfy.sh send failed: $($_.Exception.Message)"
+        Write-Host ("[monitor] ntfy.sh send failed: " + $_.Exception.Message)
     }
 }
 
@@ -105,43 +86,47 @@ function Send-WhatsApp {
     if (-not $canWhatsApp) { return }
     try {
         $encoded = [System.Uri]::EscapeDataString($Message)
-        $uri = "https://api.callmebot.com/whatsapp.php?phone=$Phone&text=$encoded&apikey=$ApiKey"
-        Invoke-RestMethod -Uri $uri -Method GET -TimeoutSec 15 | Out-Null
+        $waUrl = "https://api.callmebot.com/whatsapp.php?phone=" + $Phone + "&text=" + $encoded + "&apikey=" + $ApiKey
+        Invoke-RestMethod -Uri $waUrl -Method GET -TimeoutSec 15 | Out-Null
         Write-Host "[monitor] WhatsApp notification sent!"
     } catch {
-        Write-Host "[monitor] WhatsApp send failed: $($_.Exception.Message)"
+        Write-Host ("[monitor] WhatsApp send failed: " + $_.Exception.Message)
     }
 }
 
 # ---- Monitor loop ----
-Write-Host "[monitor] Watching for tunnel URL changes (poll every ${PollIntervalSeconds}s)..."
-Write-Host "[monitor] Press Ctrl+C to stop"
-Write-Host ""
+Write-Host ("[monitor] Watching for tunnel URL changes (poll every " + $PollIntervalSeconds + "s)...")
 
 $lastUrl = $null
 if (Test-Path $UrlFile) {
-    $lastUrl = (Get-Content $UrlFile -Raw -ErrorAction SilentlyContinue).Trim()
+    $lastUrl = (Get-Content $UrlFile -Raw -ErrorAction SilentlyContinue)
+    if ($lastUrl) { $lastUrl = $lastUrl.Trim() }
 }
 
 while ($true) {
-    $currentUrl = Get-TunnelUrl
+    try {
+        $currentUrl = Get-TunnelUrl
 
-    if ($currentUrl -and $currentUrl -ne $lastUrl) {
-        Write-Host "[monitor] New URL detected: $currentUrl" -ForegroundColor Green
+        if ($currentUrl -and ($currentUrl -ne $lastUrl)) {
+            Write-Host ("[monitor] New URL detected: " + $currentUrl)
 
-        # Save to file
-        $currentUrl | Out-File -FilePath $UrlFile -NoNewline -Encoding UTF8
-        Write-Host "[monitor] Saved to $UrlFile"
+            # Save to file
+            $currentUrl | Out-File -FilePath $UrlFile -NoNewline -Encoding UTF8
+            Write-Host ("[monitor] Saved to " + $UrlFile)
 
-        # Send push notification via ntfy.sh
-        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm"
-        Send-Ntfy -Title "CLI Remote is online!" -Message "$currentUrl`n`nUpdated: $timestamp" -Url $currentUrl
+            # Send push notification via ntfy.sh
+            $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm"
+            $ntfyMsg = $currentUrl + "`nUpdated: " + $timestamp
+            Send-Ntfy -Title "CLI Remote is online!" -Message $ntfyMsg -ClickUrl $currentUrl
 
-        # Also send WhatsApp if configured
-        $msg = "CLI Remote is online!`n`n$currentUrl`n`nOpen this link to access your computer.`n`nUpdated: $timestamp"
-        Send-WhatsApp -Message $msg
+            # Also send WhatsApp if configured
+            $waMsg = "CLI Remote is online! " + $currentUrl + " (Updated: " + $timestamp + ")"
+            Send-WhatsApp -Message $waMsg
 
-        $lastUrl = $currentUrl
+            $lastUrl = $currentUrl
+        }
+    } catch {
+        Write-Host ("[monitor] Error: " + $_.Exception.Message)
     }
 
     Start-Sleep -Seconds $PollIntervalSeconds
