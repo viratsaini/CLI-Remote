@@ -356,8 +356,10 @@
     window.wsClient.addEventListener('connected', (e) => {
       setStatus('connected');
       toast('Connected', 'success', 2000);
-      // Always sync session state on connect/reconnect to catch server-side changes
-      loadExistingSessions();
+      // Re-subscribe to all existing sessions after reconnect
+      for (const [id] of sessionMeta) {
+        window.wsClient.subscribe(id);
+      }
     });
 
     window.wsClient.addEventListener('disconnected', () => {

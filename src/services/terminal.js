@@ -23,7 +23,20 @@ class Terminal {
     this._alive = false;
     this._pid = null;
 
-    const defaultShell = shell || (os.platform() === 'win32' ? 'cmd.exe' : (process.env.SHELL || '/bin/bash'));
+    const ALLOWED_SHELLS = [
+      'bash', 'sh', 'zsh', 'fish', 'dash', 'ksh', 'tcsh', 'csh',
+      'cmd.exe', 'powershell.exe', 'pwsh.exe', 'pwsh',
+    ];
+    let resolvedShell = shell || null;
+    if (resolvedShell) {
+      // Allow absolute paths and known shell names; reject anything suspicious
+      const basename = resolvedShell.replace(/.*[\\/]/, '');
+      if (!ALLOWED_SHELLS.includes(basename.toLowerCase())) {
+        console.warn(`[terminal] Shell "${resolvedShell}" not in allowlist, using default`);
+        resolvedShell = null;
+      }
+    }
+    const defaultShell = resolvedShell || (os.platform() === 'win32' ? 'cmd.exe' : (process.env.SHELL || '/bin/bash'));
     const mergedEnv = Object.assign({}, process.env, env, { TERM: 'xterm-256color', COLORTERM: 'truecolor' });
 
     if (PTY_AVAILABLE) {
@@ -97,8 +110,16 @@ class Terminal {
     this._dataCallbacks.push(callback);
   }
 
+  offData(callback) {
+    this._dataCallbacks = this._dataCallbacks.filter(cb => cb !== callback);
+  }
+
   onExit(callback) {
     this._exitCallbacks.push(callback);
+  }
+
+  offExit(callback) {
+    this._exitCallbacks = this._exitCallbacks.filter(cb => cb !== callback);
   }
 
   get id() { return this._id; }

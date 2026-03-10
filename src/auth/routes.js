@@ -4,9 +4,11 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
-const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
 const { authenticateToken, addToBlacklist } = require('./middleware');
+
+// Stable admin user ID derived from username (consistent across logins)
+const ADMIN_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 const router = express.Router();
 
@@ -49,7 +51,7 @@ router.post('/login', loginLimiter, async (req, res) => {
   if (!valid) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  const user = { id: uuidv4(), username };
+  const user = { id: ADMIN_USER_ID, username };
   const token = generateToken(user);
   res.json({
     token,

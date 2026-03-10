@@ -13,7 +13,8 @@ class WSHandler {
   }
 
   handleConnection(ws, req) {
-    const clientState = { user: null, sessionSubscriptions: new Set(), authenticated: false };
+    // sessionSubscriptions: Map<sessionId, { dataHandler, exitHandler }>
+    const clientState = { user: null, sessionSubscriptions: new Map(), authenticated: false };
     this._clients.set(ws, clientState);
 
     this._send(ws, { type: 'connected', message: 'Send auth message to authenticate' });
@@ -83,8 +84,6 @@ class WSHandler {
     }
     // Only attach terminal listeners once per (ws, sessionId) pair
     if (!state.sessionSubscriptions.has(sessionId)) {
-      state.sessionSubscriptions.add(sessionId);
-
       const dataHandler = (data) => {
         if (ws.readyState === ws.OPEN) {
           this._send(ws, { type: 'output', sessionId, data });
@@ -99,6 +98,7 @@ class WSHandler {
 
       session.terminal.onData(dataHandler);
       session.terminal.onExit(exitHandler);
+      state.sessionSubscriptions.set(sessionId, { dataHandler, exitHandler, terminal: session.terminal });
     }
     this._send(ws, { type: 'subscribed', sessionId });
   }
@@ -148,13 +148,27 @@ class WSHandler {
     if (!session || session.userId !== state.user.id) {
       return this._send(ws, { type: 'error', message: 'Session not found' });
     }
+    const handlers = state.sessionSubscriptions.get(sessionId);
+    if (handlers) {
+      try {
+        handlers.terminal.offData(handlers.dataHandler);
+        handlers.terminal.offExit(handlers.exitHandler);
+      } catch (_) {}
+      state.sessionSubscriptions.delete(sessionId);
+    }
     this._sessionManager.closeSession(sessionId);
     this._send(ws, { type: 'session_closed', sessionId });
-    state.sessionSubscriptions.delete(sessionId);
   }
 
   _cleanupClient(ws, state) {
-    // Nothing extra needed; subscriptions are cleaned up on close
+    // Remove all terminal data/exit listeners attached by this WS client
+    for (const [sessionId, handlers] of state.sessionSubscriptions) {
+      try {
+        handlers.terminal.offData(handlers.dataHandler);
+        handlers.terminal.offExit(handlers.exitHandler);
+      } catch (_) {}
+    }
+    state.sessionSubscriptions.clear();
   }
 
   _send(ws, obj) {

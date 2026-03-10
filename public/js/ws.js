@@ -60,7 +60,6 @@
       });
 
       this._ws.addEventListener('close', () => {
-        const wasAuth = this._authenticated;
         this._authenticated = false;
         this.dispatchEvent(new CustomEvent('disconnected'));
         if (this._shouldReconnect) {

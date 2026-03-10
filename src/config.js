@@ -7,7 +7,11 @@ const config = {
   host: process.env.HOST || '0.0.0.0',
   jwtSecret: (() => {
     const secret = process.env.JWT_SECRET;
+    const isProduction = (process.env.NODE_ENV || 'development') === 'production';
     if (!secret || secret === 'your-secret-here-change-in-production') {
+      if (isProduction) {
+        throw new Error('FATAL: JWT_SECRET must be explicitly set in production. Refusing to start.');
+      }
       const generated = uuidv4();
       console.warn(
         '[config] WARNING: JWT_SECRET not set or is default. Using auto-generated secret: ' +
