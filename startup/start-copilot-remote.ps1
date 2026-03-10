@@ -61,16 +61,24 @@ $tunnelProcess = Start-Process -FilePath $CloudflaredExe `
 
 Write-Host "[startup] Cloudflare Tunnel started (PID: $($tunnelProcess.Id))"
 
+# ---- Start URL Monitor (detects URL change → saves to file + WhatsApp) ----
+$monitorScript = Join-Path $PSScriptRoot "url-monitor.ps1"
+if (Test-Path $monitorScript) {
+    $monitorProcess = Start-Process -FilePath "powershell.exe" `
+        -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$monitorScript`"" `
+        -PassThru -WindowStyle Hidden
+    Write-Host "[startup] URL Monitor started (PID: $($monitorProcess.Id))"
+}
+
 # ---- Save PIDs for the stop script ----
 $PidFile = Join-Path $LogDir "pids.json"
 @{
-    server = $serverProcess.Id
-    tunnel = $tunnelProcess.Id
+    server  = $serverProcess.Id
+    tunnel  = $tunnelProcess.Id
+    monitor = if ($monitorProcess) { $monitorProcess.Id } else { 0 }
     startedAt = (Get-Date -Format "o")
 } | ConvertTo-Json | Out-File -FilePath $PidFile -Encoding UTF8
 
-Write-Host "[startup] Done. Check tunnel log for your public URL:"
-Write-Host "          $TunnelLog"
-Write-Host ""
-Write-Host "To find your public URL, run:"
-Write-Host "  Get-Content '$TunnelLog' | Select-String 'trycloudflare.com'"
+Write-Host "[startup] Done. To get your URL anytime, run:"
+Write-Host "  .\startup\get-url.ps1"
+
