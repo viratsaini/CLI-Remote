@@ -13,6 +13,17 @@ try {
 const { spawn } = require('child_process');
 const os = require('os');
 
+/**
+ * Returns the default shell for the current platform.
+ * @returns {string}
+ */
+function _getDefaultShell() {
+  if (os.platform() === 'win32') {
+    return 'cmd.exe';
+  }
+  return process.env.SHELL || '/bin/bash';
+}
+
 class Terminal {
   constructor(id, cols = 80, rows = 24, shell = null, env = {}) {
     this._id = id;
@@ -36,7 +47,7 @@ class Terminal {
         resolvedShell = null;
       }
     }
-    const defaultShell = resolvedShell || (os.platform() === 'win32' ? 'cmd.exe' : (process.env.SHELL || '/bin/bash'));
+    const defaultShell = resolvedShell || _getDefaultShell();
     const mergedEnv = Object.assign({}, process.env, env, { TERM: 'xterm-256color', COLORTERM: 'truecolor' });
 
     if (PTY_AVAILABLE) {

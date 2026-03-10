@@ -15,7 +15,12 @@ const router = express.Router();
 // Hash admin password on startup
 let hashedAdminPassword = null;
 (async () => {
-  hashedAdminPassword = await bcrypt.hash(config.adminPassword, config.bcryptRounds);
+  try {
+    hashedAdminPassword = await bcrypt.hash(config.adminPassword, config.bcryptRounds);
+  } catch (err) {
+    console.error('[auth] FATAL: Failed to hash admin password on startup:', err.message);
+    process.exit(1);
+  }
 })();
 
 const loginLimiter = rateLimit({

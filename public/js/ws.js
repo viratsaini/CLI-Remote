@@ -36,8 +36,18 @@
     }
 
     _doConnect() {
-      if (this._ws && this._ws.readyState < WebSocket.CLOSING) {
-        this._ws.close();
+      // If a previous socket is still open or closing, wait for it to fully close first
+      if (this._ws) {
+        if (this._ws.readyState === WebSocket.CLOSING) {
+          // Wait for close to complete before reconnecting
+          this._ws.addEventListener('close', () => this._doConnect(), { once: true });
+          return;
+        }
+        if (this._ws.readyState < WebSocket.CLOSING) {
+          this._ws.close();
+          this._ws.addEventListener('close', () => this._doConnect(), { once: true });
+          return;
+        }
       }
       const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const url = `${proto}//${window.location.host}/ws`;

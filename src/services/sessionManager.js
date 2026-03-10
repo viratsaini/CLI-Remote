@@ -7,8 +7,8 @@ const config = require('../config');
 class SessionManager {
   constructor() {
     this._sessions = new Map();
-    // Cleanup every 5 minutes
-    this._cleanupInterval = setInterval(() => this.cleanupExpired(), 5 * 60 * 1000);
+    // Cleanup expired sessions on a configurable interval
+    this._cleanupInterval = setInterval(() => this.cleanupExpired(), config.cleanupIntervalMs);
     if (this._cleanupInterval.unref) this._cleanupInterval.unref();
   }
 

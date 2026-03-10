@@ -6,8 +6,8 @@ const sessionManager = require('../services/sessionManager');
 const { isBlacklisted } = require('../auth/middleware');
 
 class WSHandler {
-  constructor(sessionMgr) {
-    this._sessionManager = sessionMgr;
+  constructor(sessionManager) {
+    this._sessionManager = sessionManager;
     // Map: ws -> { user, sessionSubscriptions: Set<sessionId> }
     this._clients = new Map();
   }

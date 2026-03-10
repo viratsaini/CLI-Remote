@@ -60,7 +60,8 @@
       if (!this._token) return false;
       const payload = decodeJwtPayload(this._token);
       if (!payload || !payload.exp) return false;
-      return Date.now() / 1000 < payload.exp;
+      // Subtract 30-second buffer to account for clock skew
+      return Date.now() / 1000 < payload.exp - 30;
     }
 
     getToken() {

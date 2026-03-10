@@ -14,8 +14,8 @@ const config = {
       }
       const generated = uuidv4();
       console.warn(
-        '[config] WARNING: JWT_SECRET not set or is default. Using auto-generated secret: ' +
-        generated.substring(0, 8) + '... (sessions will be lost on restart)'
+        '[config] WARNING: JWT_SECRET not set. Using auto-generated secret (sessions will be lost on restart). ' +
+        'Set the JWT_SECRET environment variable to a long random string.'
       );
       return generated;
     }
@@ -31,6 +31,7 @@ const config = {
   get isProduction() {
     return this.nodeEnv === 'production';
   },
+  cleanupIntervalMs: parseInt(process.env.SESSION_CLEANUP_INTERVAL, 10) || 5 * 60 * 1000,
   adminUsername: process.env.ADMIN_USERNAME || 'admin',
   adminPassword: process.env.ADMIN_PASSWORD || 'changeme',
 };
